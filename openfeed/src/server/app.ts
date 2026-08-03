@@ -4,6 +4,7 @@ import cookieParser from "cookie-parser";
 import express, { type NextFunction, type Request, type Response } from "express";
 import helmet from "helmet";
 
+import { answerQuestion } from "./assistant-service.js";
 import { CANDIDATES } from "./candidates.js";
 import { ALGORITHM_INFO, buildFeed, DEFAULT_FEED_SETTINGS } from "./feed-service.js";
 import { SessionStore, type SessionRecord } from "./session-store.js";
@@ -41,7 +42,8 @@ function parseMultiplier(value: unknown): number | undefined {
     return DEFAULT_FEED_SETTINGS.earlybirdMultiplier;
   }
 
-  const parsed = typeof value === "string" ? Number(value) : Number.NaN;
+  const parsed =
+    typeof value === "string" || typeof value === "number" ? Number(value) : Number.NaN;
   return Number.isFinite(parsed) && parsed >= 0 && parsed <= 20 ? parsed : undefined;
 }
 
@@ -52,6 +54,23 @@ function normalizedName(value: unknown): string | undefined {
 
   const normalized = value.replace(/\s+/g, " ").trim();
   if (normalized.length < 2 || normalized.length > 32 || /[\u0000-\u001f\u007f]/.test(normalized)) {
+    return undefined;
+  }
+
+  return normalized;
+}
+
+function normalizedQuestion(value: unknown): string | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const normalized = value.replace(/\s+/g, " ").trim();
+  if (
+    normalized.length < 2 ||
+    normalized.length > 500 ||
+    /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(normalized)
+  ) {
     return undefined;
   }
 
@@ -200,6 +219,42 @@ export function createApp(options: AppOptions = {}): express.Express {
     }
 
     response.json(buildFeed(session, multiplier));
+  });
+
+  app.post("/api/assistant", async (request, response, next) => {
+    const session = getSession(request);
+    if (!session) {
+      sendError(response, 401, "SESSION_REQUIRED", "Start a guest session to ask Openfeed.");
+      return;
+    }
+
+    const question = normalizedQuestion(request.body?.question);
+    const multiplier = parseMultiplier(request.body?.multiplier);
+    if (!question) {
+      sendError(response, 400, "INVALID_QUESTION", "Ask a question between 2 and 500 characters.");
+      return;
+    }
+    if (multiplier === undefined) {
+      sendError(response, 400, "INVALID_MULTIPLIER", "The multiplier must be between 0 and 20.");
+      return;
+    }
+    if (!store.consumeAssistantQuota(session)) {
+      sendError(
+        response,
+        429,
+        "ASSISTANT_LIMIT",
+        "Take a moment to explore your answers before asking again.",
+      );
+      return;
+    }
+
+    try {
+      const result = await answerQuestion(session, question, multiplier);
+      store.applyInferredTopics(session, result.inferredTopics);
+      response.json(result.response);
+    } catch (error) {
+      next(error);
+    }
   });
 
   app.post("/api/interactions", (request, response) => {

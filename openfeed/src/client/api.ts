@@ -1,5 +1,6 @@
 import type {
   AlgorithmInfo,
+  AssistantResponse,
   FeedResponse,
   InteractionRequest,
   SessionUser,
@@ -69,6 +70,12 @@ export const api = {
     request<{ ok: true }>("/api/interactions", {
       method: "POST",
       body: JSON.stringify(interaction),
+    }),
+
+  ask: (question: string, multiplier: number) =>
+    request<AssistantResponse>("/api/assistant", {
+      method: "POST",
+      body: JSON.stringify({ question, multiplier }),
     }),
 
   getAlgorithm: () => request<AlgorithmInfo>("/api/algorithm"),

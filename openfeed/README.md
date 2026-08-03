@@ -1,7 +1,7 @@
-# Openfeed
+# Openfeed AI
 
-A full-stack, passwordless feed that makes X's open-source TimelineRanker behavior visible and
-interactive.
+A full-stack, passwordless curiosity companion that turns a personalized feed into fast,
+source-grounded answers.
 
 Openfeed is intentionally isolated from the existing algorithm directories. The original Scala
 source remains untouched:
@@ -14,11 +14,13 @@ uteg_liked_by_tweets/CombinedScoreAndTruncateTransform.scala
 ## What it does
 
 - Creates an instant guest profile with a display name and 1–4 interests—no email or password.
+- Gives consumers one primary action: ask a question and get a concise answer grounded in visible
+  feed sources.
 - Builds local relationship scores from those interests and explicit feed actions.
 - Runs a compatibility adapter with the exact score, partition, sort, truncate, reply-injection,
   and random-append semantics of `CombinedScoreAndTruncateTransform`.
 - Shows score breakdowns, input signals, exploration picks, and the source contract in the UI.
-- Lets a user adjust the existing Earlybird score multiplier within its original `0...20` bound.
+- Automatically learns lightweight topic preferences from questions, likes, saves, and hides.
 
 The repository does not contain X's live Earlybird search index, UTEG graph, user data, or deployable
 top-level build. Openfeed therefore uses labeled synthetic posts as compatible search candidates and
@@ -37,6 +39,16 @@ npm run dev
 Open `http://localhost:5173`. The Vite client proxies API requests to the Express server on port
 `3001`.
 
+The assistant works immediately in grounded synthesis mode. To use an OpenAI-compatible model,
+configure the server only:
+
+```bash
+OPENAI_API_KEY=... OPENAI_MODEL=gpt-4.1-mini npm run dev
+```
+
+`OPENAI_BASE_URL` is optional. API credentials never reach the browser, model calls have a hard
+timeout, and answers are constrained to the three sources selected by the unchanged ranker.
+
 ## Verify
 
 ```bash
@@ -47,7 +59,8 @@ npm run build
 
 The ranking tests cover missing-score defaults, random-candidate reservation, Scala-compatible
 negative `splitAt` behavior, truncation, and additional replies. API tests cover passwordless
-sessions, cookie defaults, bounds, interactions, hiding/undo, and algorithm provenance.
+sessions, grounded assistant retrieval, automated topic learning, cookie defaults, interactions,
+hiding/undo, and algorithm provenance.
 
 ## Production
 
@@ -70,7 +83,8 @@ keeping its interface.
 ```text
 React client
   ├─ passwordless onboarding
-  ├─ ranked feed + score ledger
+  ├─ one-question AI companion
+  ├─ ranked sources + concise brief
   └─ signal and algorithm explanations
           │ same-origin JSON
 Express API

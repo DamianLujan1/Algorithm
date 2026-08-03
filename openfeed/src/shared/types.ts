@@ -119,3 +119,33 @@ export interface AlgorithmInfo {
   sourceUnmodified: true;
   dataNotice: string;
 }
+
+export interface AssistantSource {
+  postId: string;
+  author: string;
+  handle: string;
+  topic: Topic;
+  excerpt: string;
+  score: number;
+}
+
+export type AssistantMode = "model" | "grounded";
+
+export interface AssistantResponse {
+  id: string;
+  question: string;
+  headline: string;
+  answer: string;
+  takeaways: string[];
+  sources: AssistantSource[];
+  followUps: string[];
+  mode: AssistantMode;
+  generatedAt: string;
+  pipeline: [
+    { stage: "question"; label: string },
+    { stage: "delete"; label: string },
+    { stage: "simplify"; label: string },
+    { stage: "accelerate"; label: string },
+    { stage: "automate"; label: string },
+  ];
+}

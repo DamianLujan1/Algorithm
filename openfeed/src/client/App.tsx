@@ -2,6 +2,7 @@ import {
   ArrowRight,
   BarChart3,
   Bookmark,
+  BrainCircuit,
   Check,
   ChevronRight,
   CircleUserRound,
@@ -21,6 +22,7 @@ import {
   RefreshCw,
   Repeat2,
   Save,
+  Send,
   ShieldCheck,
   SlidersHorizontal,
   Sparkles,
@@ -43,6 +45,7 @@ import { api, ApiError } from "./api.js";
 import {
   TOPIC_OPTIONS,
   type AlgorithmInfo,
+  type AssistantResponse,
   type FeedResponse,
   type InteractionAction,
   type RankedPost,
@@ -114,7 +117,12 @@ function Logo({ compact = false }: { compact?: boolean }) {
         <span />
         <span />
       </span>
-      {!compact && <span className="logo__word">openfeed</span>}
+      {!compact && (
+        <>
+          <span className="logo__word">openfeed</span>
+          <span className="logo__ai">AI</span>
+        </>
+      )}
     </div>
   );
 }
@@ -170,16 +178,16 @@ function Onboarding({
         <section className="onboarding__intro">
           <div className="eyebrow">
             <span className="eyebrow__dot" />
-            Open source ranking, made human
+            Your personal curiosity companion
           </div>
           <h1>
-            Your feed should
+            Ask anything.
             <br />
-            <em>make sense.</em>
+            <em>Keep the signal.</em>
           </h1>
           <p className="onboarding__lede">
-            A calm, personal feed powered by X’s open-source TimelineRanker—with every score and
-            signal available to inspect.
+            Openfeed AI finds the clearest ideas across what you care about, gives you a grounded
+            answer, and quietly gets more useful as you explore.
           </p>
 
           <form className="onboarding__form" onSubmit={submit}>
@@ -232,7 +240,7 @@ function Onboarding({
               type="submit"
               disabled={submitting || displayName.trim().length < 2 || interests.length === 0}
             >
-              {submitting ? "Building your feed…" : "Build my feed"}
+              {submitting ? "Preparing your space…" : "Start exploring"}
               {!submitting && <ArrowRight size={18} />}
             </button>
             <p className="guest-note">
@@ -242,72 +250,58 @@ function Onboarding({
           </form>
         </section>
 
-        <section className="onboarding__preview" aria-label="How ranking works">
+        <section className="onboarding__preview" aria-label="Openfeed AI preview">
           <div className="preview-orbit preview-orbit--one" />
           <div className="preview-orbit preview-orbit--two" />
           <div className="preview-card">
             <div className="preview-card__head">
-              <span>LIVE RANKING PREVIEW</span>
+              <span>OPENFEED AI</span>
               <div className="live-pill">
                 <span />
-                Transparent
+                Grounded
               </div>
             </div>
-            <div className="preview-candidate preview-candidate--top">
-              <div className="preview-avatar">MC</div>
-              <div>
-                <strong>Small evals, real tasks</strong>
-                <span>Artificial intelligence</span>
-              </div>
-              <b>1.30</b>
+            <div className="preview-question">
+              <span>You</span>
+              <p>What makes an AI product genuinely useful every day?</p>
             </div>
-            <div className="score-composer">
-              <div>
-                <span>Relationship</span>
-                <strong>0.38</strong>
-                <small>your interests</small>
-              </div>
-              <span className="score-operator">+</span>
-              <div>
-                <span>Content</span>
-                <strong>0.92</strong>
-                <small>quality + recency</small>
-              </div>
-            </div>
-            <div className="preview-equation">
-              <GitBranch size={18} />
-              <span>
-                <small>COMBINED SCORE</small>
-                1.0 × 0.38 + 1.0 × 0.92
+            <div className="preview-answer">
+              <span className="preview-answer__icon">
+                <BrainCircuit size={18} />
               </span>
-              <strong>1.30</strong>
+              <div>
+                <small>OPENFEED</small>
+                <strong>Start with a repeated moment, not a bigger model.</strong>
+                <p>
+                  The strongest pattern in your feed is simple: solve one real task, measure it with
+                  a small eval, and earn the next use.
+                </p>
+              </div>
             </div>
-            <div className="preview-list">
+            <div className="preview-takeaway">
+              <Sparkles size={16} />
+              <span>
+                <small>TRY THIS</small>
+                Pick one weekly task and define ten examples of a great result.
+              </span>
+            </div>
+            <div className="preview-sources">
+              <span>Grounded in 3 picks</span>
               <div>
-                <span className="preview-rank">2</span>
-                <span className="preview-line preview-line--long" />
-                <b>1.27</b>
-              </div>
-              <div>
-                <span className="preview-rank">3</span>
-                <span className="preview-line" />
-                <b>1.19</b>
-              </div>
-              <div>
-                <Compass size={15} />
-                <span className="preview-line preview-line--short" />
-                <small>Explore</small>
+                <i>MC</i>
+                <i>DP</i>
+                <i>AK</i>
               </div>
             </div>
             <p className="preview-source">
               <Check size={14} />
-              Original TimelineRanker behavior preserved
+              Answers stay connected to visible sources
             </p>
           </div>
           <div className="preview-caption">
             <Sparkles size={17} />
             <span>
-              <strong>No black box.</strong> Open any post to see why it ranked.
+              <strong>Less scrolling.</strong> Ask once and start with what matters.
             </span>
           </div>
         </section>
@@ -337,7 +331,7 @@ function Sidebar({
           type="button"
         >
           <Home size={19} />
-          <span>For you</span>
+          <span>Today</span>
         </button>
         <button
           className={view === "signals" ? "active" : ""}
@@ -345,11 +339,11 @@ function Sidebar({
           type="button"
         >
           <BarChart3 size={19} />
-          <span>Your signals</span>
+          <span>Your interests</span>
         </button>
         <button onClick={onAlgorithm} type="button">
           <GitBranch size={19} />
-          <span>Algorithm</span>
+          <span>How it works</span>
         </button>
       </nav>
       <div className="sidebar__lower">
@@ -382,33 +376,203 @@ function MobileHeader({ onMenu }: { onMenu: () => void }) {
   );
 }
 
-function FeedHeader({
+function AiGuide({
   user,
+  feed,
+  response,
+  asking,
+  error,
+  onAsk,
+}: {
+  user: SessionUser;
+  feed?: FeedResponse;
+  response?: AssistantResponse;
+  asking: boolean;
+  error?: string;
+  onAsk: (question: string) => void;
+}) {
+  const [question, setQuestion] = useState("");
+  const quickQuestions = [
+    "Give me my 60-second brief",
+    "What should I learn next?",
+    "Connect ideas across my interests",
+  ];
+
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    const nextQuestion = question.trim();
+    if (nextQuestion.length < 2 || asking) return;
+    onAsk(nextQuestion);
+    setQuestion("");
+  };
+
+  return (
+    <section className="ai-guide">
+      <div className="ai-guide__glow" />
+      <div className="ai-guide__heading">
+        <span className="ai-orb" aria-hidden="true">
+          <BrainCircuit size={22} />
+        </span>
+        <div>
+          <span>
+            {greeting()}, {user.displayName.split(" ")[0]}
+          </span>
+          <h1>What are you curious about?</h1>
+        </div>
+        <span className="grounded-badge">
+          <ShieldCheck size={13} />
+          Grounded in your feed
+        </span>
+      </div>
+
+      <form className="ai-composer" onSubmit={submit}>
+        <input
+          value={question}
+          maxLength={500}
+          onChange={(event) => setQuestion(event.target.value)}
+          placeholder="Ask about AI, design, science—or connect the dots…"
+          aria-label="Ask Openfeed AI"
+        />
+        <button
+          type="submit"
+          aria-label="Ask Openfeed"
+          disabled={asking || question.trim().length < 2}
+        >
+          {asking ? <RefreshCw className="spin" size={18} /> : <Send size={18} />}
+        </button>
+      </form>
+
+      <div className="quick-questions" aria-label="Suggested questions">
+        {quickQuestions.map((prompt) => (
+          <button key={prompt} type="button" disabled={asking} onClick={() => onAsk(prompt)}>
+            {prompt}
+          </button>
+        ))}
+      </div>
+
+      {error && <p className="assistant-error">{error}</p>}
+
+      {asking && (
+        <div className="assistant-thinking" role="status">
+          <span>
+            <i />
+            <i />
+            <i />
+          </span>
+          Removing noise and finding the clearest ideas…
+        </div>
+      )}
+
+      {!asking && response && (
+        <article className="assistant-answer" aria-live="polite">
+          <div className="assistant-answer__meta">
+            <span>
+              <Sparkles size={14} />
+              {response.mode === "model" ? "AI answer" : "Grounded answer"}
+            </span>
+            <small>{response.sources.length} visible sources</small>
+          </div>
+          <h2>{response.headline}</h2>
+          <p>{response.answer}</p>
+          <div className="assistant-takeaways">
+            {response.takeaways.slice(0, 3).map((takeaway, index) => (
+              <div key={takeaway}>
+                <span>{index + 1}</span>
+                <p>{takeaway}</p>
+              </div>
+            ))}
+          </div>
+          <div className="assistant-sources">
+            <span>Sources from your feed</span>
+            <div>
+              {response.sources.map((source) => {
+                const topic = topicDetails(source.topic);
+                return (
+                  <button
+                    type="button"
+                    key={source.postId}
+                    onClick={() =>
+                      document.getElementById(`post-${source.postId}`)?.scrollIntoView({
+                        behavior: "smooth",
+                        block: "center",
+                      })
+                    }
+                    style={{ "--topic-color": topic.color } as CSSProperties}
+                  >
+                    <i>{source.author.split(" ").map((part) => part[0]).join("").slice(0, 2)}</i>
+                    <span>
+                      <strong>{source.author}</strong>
+                      <small>{topic.shortLabel}</small>
+                    </span>
+                    <ChevronRight size={14} />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div className="assistant-followups">
+            {response.followUps.slice(0, 2).map((prompt) => (
+              <button key={prompt} type="button" onClick={() => onAsk(prompt)}>
+                {prompt}
+              </button>
+            ))}
+          </div>
+        </article>
+      )}
+
+      {!asking && !response && feed && (
+        <div className="daily-brief">
+          <div className="daily-brief__title">
+            <span>
+              <Sparkles size={14} />
+              Ready for you
+            </span>
+            <small>{feed.posts.length} ideas ranked around your interests</small>
+          </div>
+          <div className="daily-brief__picks">
+            {feed.posts.slice(0, 3).map((post) => (
+              <div key={post.id}>
+                <span style={{ background: post.author.gradient }}>{post.author.initials}</span>
+                <p>{firstThoughtForUi(post.text)}</p>
+              </div>
+            ))}
+          </div>
+          <button type="button" onClick={() => onAsk("Give me my 60-second brief")}>
+            Summarize what matters <ArrowRight size={15} />
+          </button>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function firstThoughtForUi(text: string): string {
+  const sentence = text.match(/^.*?[.!?](?:\s|$)/)?.[0]?.trim() ?? text;
+  return sentence.length > 112 ? `${sentence.slice(0, 109)}…` : sentence;
+}
+
+function FeedHeader({
   feed,
   showScores,
   refreshing,
   onToggleScores,
   onRefresh,
 }: {
-  user: SessionUser;
   feed?: FeedResponse;
   showScores: boolean;
   refreshing: boolean;
   onToggleScores: () => void;
   onRefresh: () => void;
 }) {
-  const firstName = user.displayName.split(" ")[0];
   return (
-    <header className="feed-header">
+    <header className="feed-header feed-header--section">
       <div>
-        <span className="feed-header__greeting">
-          {greeting()}, {firstName}
-        </span>
-        <h1>Your feed, explained.</h1>
+        <span className="feed-header__greeting">PERSONALIZED DISCOVERY</span>
+        <h1>Ideas picked for you</h1>
         <p>
           {feed
-            ? `${feed.candidateCount} candidates became ${feed.posts.length} picks—here’s why.`
-            : "Turning your interests into a transparent ranking."}
+            ? `${feed.posts.length} useful picks from ${feed.candidateCount} candidates.`
+            : "Finding a few ideas worth your attention."}
         </p>
       </div>
       <div className="feed-header__actions">
@@ -484,7 +648,10 @@ function PostCard({
 }) {
   const topic = topicDetails(post.topic);
   return (
-    <article className={`post-card ${post.isExploration ? "post-card--explore" : ""}`}>
+    <article
+      id={`post-${post.id}`}
+      className={`post-card ${post.isExploration ? "post-card--explore" : ""}`}
+    >
       {post.isExploration && (
         <div className="explore-banner">
           <Compass size={15} />
@@ -606,79 +773,40 @@ function FeedSkeleton() {
   );
 }
 
-function TuningPanel({
+function ContextPanel({
   feed,
-  multiplier,
-  onMultiplier,
   onAlgorithm,
 }: {
   feed?: FeedResponse;
-  multiplier: number;
-  onMultiplier: (value: number) => void;
   onAlgorithm: () => void;
 }) {
-  const presets = [
-    { label: "Focused", value: 0.55 },
-    { label: "Balanced", value: 1 },
-    { label: "Explore", value: 1.65 },
-  ];
-
   return (
     <aside className="tuning-panel">
-      <section className="panel-card ranking-mix">
+      <section className="panel-card ai-context-card">
         <div className="panel-heading">
           <div>
-            <span>Ranking mix</span>
-            <small>Adjust content discovery</small>
+            <span>Personalization is on</span>
+            <small>Openfeed learns from clear choices</small>
           </div>
           <span className="live-pill">
             <i />
-            Live
+            Automatic
           </span>
         </div>
-        <div className="weight-display">
-          <div>
-            <span>Relationship</span>
-            <strong>1.0×</strong>
-            <small>fixed by source</small>
-          </div>
-          <span>+</span>
-          <div className="weight-display__active">
-            <span>Content</span>
-            <strong>{multiplier.toFixed(2)}×</strong>
-            <small>your control</small>
-          </div>
-        </div>
-        <label className="multiplier-slider">
+        <div className="automatic-flow">
           <span>
-            <span>More personal</span>
-            <span>More discovery</span>
+            <Heart size={15} />
+            Your choices
           </span>
-          <input
-            type="range"
-            min="0"
-            max="2.5"
-            step="0.05"
-            value={multiplier}
-            onChange={(event) => onMultiplier(Number(event.target.value))}
-            aria-label="Earlybird content score multiplier"
-          />
-        </label>
-        <div className="preset-row">
-          {presets.map((preset) => (
-            <button
-              key={preset.label}
-              className={Math.abs(multiplier - preset.value) < 0.01 ? "active" : ""}
-              onClick={() => onMultiplier(preset.value)}
-              type="button"
-            >
-              {preset.label}
-            </button>
-          ))}
+          <ChevronRight size={14} />
+          <span>
+            <BrainCircuit size={15} />
+            Better answers
+          </span>
         </div>
         <p className="mix-note">
-          <Info size={14} />
-          This changes an existing TimelineRanker parameter—not the algorithm.
+          <ShieldCheck size={14} />
+          No profile setup to maintain. Ask, like, save, or hide—and the rest happens quietly.
         </p>
       </section>
 
@@ -727,9 +855,9 @@ function TuningPanel({
           <GitBranch size={19} />
         </span>
         <span>
-          <small>ALGORITHM SOURCE</small>
-          <strong>TimelineRanker</strong>
-          <em>Original behavior preserved</em>
+          <small>WHY THESE IDEAS</small>
+          <strong>See how ranking works</strong>
+          <em>Transparent and unchanged</em>
         </span>
         <ChevronRight size={18} />
       </button>
@@ -987,14 +1115,14 @@ function MobileMenu({
           type="button"
           onClick={() => selectView("feed")}
         >
-          <Home size={19} /> For you
+          <Home size={19} /> Today
         </button>
         <button
           className={view === "signals" ? "active" : ""}
           type="button"
           onClick={() => selectView("signals")}
         >
-          <BarChart3 size={19} /> Your signals
+          <BarChart3 size={19} /> Your interests
         </button>
         <button
           type="button"
@@ -1003,7 +1131,7 @@ function MobileMenu({
             onAlgorithm();
           }}
         >
-          <GitBranch size={19} /> Algorithm
+          <GitBranch size={19} /> How it works
         </button>
         <button type="button" onClick={onLogout}>
           <LogOut size={19} /> Leave guest mode
@@ -1024,7 +1152,7 @@ function Dashboard({
 }) {
   const [view, setView] = useState<AppView>("feed");
   const [feed, setFeed] = useState<FeedResponse>();
-  const [multiplier, setMultiplier] = useState(1);
+  const multiplier = 1;
   const [showScores, setShowScores] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [busyAction, setBusyAction] = useState<string>();
@@ -1032,6 +1160,9 @@ function Dashboard({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [toast, setToast] = useState<ToastState>();
   const [feedError, setFeedError] = useState<string>();
+  const [assistantResponse, setAssistantResponse] = useState<AssistantResponse>();
+  const [assistantError, setAssistantError] = useState<string>();
+  const [askingAssistant, setAskingAssistant] = useState(false);
   const latestFeedRequest = useRef(0);
 
   const loadFeed = useCallback(
@@ -1137,6 +1268,26 @@ function Dashboard({
     }
   };
 
+  const askAssistant = async (question: string) => {
+    setAskingAssistant(true);
+    setAssistantError(undefined);
+    try {
+      const answer = await api.ask(question, multiplier);
+      setAssistantResponse(answer);
+      await loadFeed(multiplier);
+    } catch (requestError) {
+      if (requestError instanceof ApiError && requestError.status === 401) {
+        onSessionExpired();
+        return;
+      }
+      setAssistantError(
+        requestError instanceof Error ? requestError.message : "Openfeed could not answer that.",
+      );
+    } finally {
+      setAskingAssistant(false);
+    }
+  };
+
   const strongestTopic = useMemo(
     () => (feed?.topicSignals[0] ? topicDetails(feed.topicSignals[0].topic).shortLabel : undefined),
     [feed],
@@ -1155,8 +1306,15 @@ function Dashboard({
       <main className={`main-content ${view === "signals" ? "main-content--signals" : ""}`}>
         {view === "feed" ? (
           <>
-            <FeedHeader
+            <AiGuide
               user={user}
+              feed={feed}
+              response={assistantResponse}
+              asking={askingAssistant}
+              error={assistantError}
+              onAsk={(question) => void askAssistant(question)}
+            />
+            <FeedHeader
               feed={feed}
               showScores={showScores}
               refreshing={refreshing}
@@ -1214,10 +1372,8 @@ function Dashboard({
       </main>
 
       {view === "feed" && (
-        <TuningPanel
+        <ContextPanel
           feed={feed}
-          multiplier={multiplier}
-          onMultiplier={setMultiplier}
           onAlgorithm={() => setAlgorithmOpen(true)}
         />
       )}

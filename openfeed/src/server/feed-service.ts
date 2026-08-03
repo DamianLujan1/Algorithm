@@ -1,6 +1,12 @@
 import { CANDIDATES } from "./candidates.js";
 import { combinedScoreAndTruncateWithTrace } from "./ranker.js";
-import { TOPIC_OPTIONS, type AlgorithmInfo, type FeedResponse, type Topic } from "../shared/types.js";
+import {
+  TOPIC_OPTIONS,
+  type AlgorithmInfo,
+  type CandidatePost,
+  type FeedResponse,
+  type Topic,
+} from "../shared/types.js";
 import type { SessionRecord } from "./session-store.js";
 
 export const SOURCE_PATH =
@@ -37,13 +43,15 @@ export const ALGORITHM_INFO: AlgorithmInfo = {
     "The open-source repository does not include X's live Earlybird index, UTEG graph, or user data. Openfeed uses clearly labeled synthetic candidates and local guest signals as compatible inputs.",
 };
 
-function personalizedRealGraphScore(session: SessionRecord, postId: string, topic: Topic): number {
-  const candidate = CANDIDATES.find(({ id }) => id === postId);
-  const baseScore = candidate?.baseRealGraphScore ?? 0;
-  const topicAffinity = session.affinities[topic];
+export function personalizedRealGraphScore(
+  session: SessionRecord,
+  candidate: CandidatePost,
+): number {
+  const baseScore = candidate.baseRealGraphScore ?? 0;
+  const topicAffinity = session.affinities[candidate.topic];
   const directSignal =
-    (session.likedPostIds.has(postId) ? 0.05 : 0) +
-    (session.savedPostIds.has(postId) ? 0.03 : 0);
+    (session.likedPostIds.has(candidate.id) ? 0.05 : 0) +
+    (session.savedPostIds.has(candidate.id) ? 0.03 : 0);
 
   return Math.min(1, baseScore + topicAffinity * 0.42 + directSignal);
 }
@@ -75,7 +83,7 @@ export function buildFeed(
   const realGraphScores = new Map(
     candidates.map((candidate) => [
       candidate.id,
-      personalizedRealGraphScore(session, candidate.id, candidate.topic),
+      personalizedRealGraphScore(session, candidate),
     ]),
   );
   const replyTweetIds = new Set(

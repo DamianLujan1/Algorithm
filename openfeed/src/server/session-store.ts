@@ -3,6 +3,8 @@ import { randomUUID } from "node:crypto";
 import { TOPIC_OPTIONS, type CandidatePost, type InteractionAction, type SessionUser, type Topic } from "../shared/types.js";
 
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const ASSISTANT_WINDOW_MS = 10 * 60 * 1000;
+const ASSISTANT_REQUEST_LIMIT = 20;
 
 const SIGNAL_DELTA: Record<InteractionAction, number> = {
   like: 0.08,
@@ -17,6 +19,7 @@ export interface SessionRecord {
   likedPostIds: Set<string>;
   savedPostIds: Set<string>;
   hiddenPostIds: Set<string>;
+  assistantRequestTimes: number[];
   lastSeenAt: number;
 }
 
@@ -43,6 +46,7 @@ export class SessionStore {
       likedPostIds: new Set(),
       savedPostIds: new Set(),
       hiddenPostIds: new Set(),
+      assistantRequestTimes: [],
       lastSeenAt: now.getTime(),
     };
 
@@ -102,6 +106,26 @@ export class SessionStore {
     const direction = active ? 1 : -1;
     const nextAffinity = session.affinities[post.topic] + SIGNAL_DELTA[action] * direction;
     session.affinities[post.topic] = Math.max(0, Math.min(1, nextAffinity));
+  }
+
+  consumeAssistantQuota(session: SessionRecord): boolean {
+    const cutoff = Date.now() - ASSISTANT_WINDOW_MS;
+    session.assistantRequestTimes = session.assistantRequestTimes.filter(
+      (requestedAt) => requestedAt >= cutoff,
+    );
+
+    if (session.assistantRequestTimes.length >= ASSISTANT_REQUEST_LIMIT) {
+      return false;
+    }
+
+    session.assistantRequestTimes.push(Date.now());
+    return true;
+  }
+
+  applyInferredTopics(session: SessionRecord, topics: readonly Topic[]): void {
+    for (const topic of new Set(topics)) {
+      session.affinities[topic] = Math.min(1, session.affinities[topic] + 0.025);
+    }
   }
 
   clear(): void {

@@ -87,6 +87,65 @@ describe("Openfeed API", () => {
     expect(response.body.error.code).toBe("INVALID_MULTIPLIER");
   });
 
+  it("answers consumer questions from ranked visible sources and learns the topic", async () => {
+    const agent = request.agent(testApp());
+    await agent
+      .post("/api/session")
+      .send({ displayName: "Mae", interests: ["design"] })
+      .expect(201);
+    const initialFeed = await agent.get("/api/feed").expect(200);
+    const initialAiSignal = initialFeed.body.topicSignals.find(
+      (signal: { topic: string }) => signal.topic === "ai",
+    ).value;
+
+    const answer = await agent
+      .post("/api/assistant")
+      .send({
+        question: "How can AI agents become more reliable?",
+        multiplier: 1,
+      })
+      .expect(200);
+
+    expect(answer.body.question).toBe("How can AI agents become more reliable?");
+    expect(answer.body.answer.length).toBeGreaterThan(40);
+    expect(answer.body.sources).toHaveLength(3);
+    expect(answer.body.sources[0].topic).toBe("ai");
+    expect(answer.body.pipeline.map((item: { stage: string }) => item.stage)).toEqual([
+      "question",
+      "delete",
+      "simplify",
+      "accelerate",
+      "automate",
+    ]);
+    expect(["grounded", "model"]).toContain(answer.body.mode);
+
+    const learnedFeed = await agent.get("/api/feed").expect(200);
+    expect(
+      learnedFeed.body.topicSignals.find(
+        (signal: { topic: string }) => signal.topic === "ai",
+      ).value,
+    ).toBeGreaterThan(initialAiSignal);
+  });
+
+  it("validates assistant questions and requires a session", async () => {
+    const app = testApp();
+    await request(app)
+      .post("/api/assistant")
+      .send({ question: "Tell me something", multiplier: 1 })
+      .expect(401);
+
+    const agent = request.agent(app);
+    await agent
+      .post("/api/session")
+      .send({ displayName: "Nia", interests: ["science"] })
+      .expect(201);
+    const response = await agent
+      .post("/api/assistant")
+      .send({ question: "", multiplier: 1 })
+      .expect(400);
+    expect(response.body.error.code).toBe("INVALID_QUESTION");
+  });
+
   it("applies interactions to local signals and supports undoing hidden posts", async () => {
     const agent = request.agent(testApp());
     await agent
