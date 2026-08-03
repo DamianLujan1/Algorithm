@@ -185,6 +185,9 @@ describe("Openfeed API", () => {
       .expect(200);
     const restoredFeed = await agent.get("/api/feed").expect(200);
     expect(restoredFeed.body.candidateCount).toBe(initialFeed.body.candidateCount);
+    expect(
+      restoredFeed.body.posts.some((post: { id: string }) => post.id === target.id),
+    ).toBe(true);
   });
 
   it("clears the guest session", async () => {

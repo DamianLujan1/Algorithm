@@ -1,23 +1,24 @@
 {
   "name": "openfeed",
   "version": "1.0.0",
-  "description": "A transparent, passwordless feed powered by X's unchanged TimelineRanker algorithm.",
+  "description": "A passwordless AI curiosity companion with source-grounded, personalized answers.",
   "type": "module",
   "private": true,
   "scripts": {
     "dev": "concurrently --kill-others --names api,web --prefix-colors blue,magenta \"npm:dev:api\" \"npm:dev:web\"",
     "dev:api": "tsx watch src/server/index.ts",
     "dev:web": "vite",
-    "build": "vite build && tsup src/server/index.ts --format esm --platform node --out-dir dist-server --sourcemap",
+    "build": "vite build && esbuild src/server/index.ts --bundle --platform=node --format=esm --target=node22 --packages=external --outdir=dist-server --sourcemap",
     "start": "NODE_ENV=production node dist-server/index.js",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"
   },
   "keywords": [
+    "ai",
+    "assistant",
     "recommendations",
-    "ranking",
-    "timeline"
+    "ranking"
   ],
   "license": "AGPL-3.0",
   "dependencies": {
@@ -37,8 +38,8 @@
     "@types/supertest": "^7.2.1",
     "@vitejs/plugin-react": "^6.0.5",
     "concurrently": "^10.0.4",
+    "esbuild": "^0.28.1",
     "supertest": "^7.2.2",
-    "tsup": "^8.5.1",
     "tsx": "^4.23.5",
     "typescript": "^7.0.2",
     "vite": "^8.2.0",
