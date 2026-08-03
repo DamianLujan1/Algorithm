@@ -145,7 +145,12 @@ export function createApp(options: AppOptions = {}): express.Express {
     store.get(request.cookies?.[COOKIE_NAME] as string | undefined);
 
   app.get("/api/health", (_request, response) => {
-    response.json({ status: "ok", service: "openfeed", algorithm: ALGORITHM_INFO.name });
+    response.json({
+      status: "ok",
+      service: "openfeed",
+      algorithm: ALGORITHM_INFO.name,
+      adapter: ALGORITHM_INFO.adapter,
+    });
   });
 
   app.get("/api/topics", (_request, response) => {

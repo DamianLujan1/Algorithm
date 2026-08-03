@@ -1,5 +1,10 @@
 import { CANDIDATES } from "./candidates.js";
-import { combinedScoreAndTruncateWithTrace } from "./ranker.js";
+import {
+  PLATFORM_ADAPTER_NAME,
+  rankPlatformCandidates,
+  TIMELINE_RANKER_SOURCE_PATH,
+  TIMELINE_RANKER_SOURCE_SHA256,
+} from "./platform-ranking-adapter.js";
 import {
   TOPIC_OPTIONS,
   type AlgorithmInfo,
@@ -8,10 +13,6 @@ import {
   type Topic,
 } from "../shared/types.js";
 import type { SessionRecord } from "./session-store.js";
-
-export const SOURCE_PATH =
-  "timelineranker/server/src/main/scala/com/twitter/timelineranker/" +
-  "uteg_liked_by_tweets/CombinedScoreAndTruncateTransform.scala";
 
 export const DEFAULT_FEED_SETTINGS = {
   earlybirdMultiplier: 1.0,
@@ -37,7 +38,9 @@ export const ALGORITHM_INFO: AlgorithmInfo = {
     emptyScore: 0.0,
     defaultEarlybirdMultiplier: 1.0,
   },
-  sourcePath: SOURCE_PATH,
+  adapter: PLATFORM_ADAPTER_NAME,
+  sourcePath: TIMELINE_RANKER_SOURCE_PATH,
+  sourceSha256: TIMELINE_RANKER_SOURCE_SHA256,
   sourceUnmodified: true,
   dataNotice:
     "The open-source repository does not include X's live Earlybird index, UTEG graph, or user data. Openfeed uses clearly labeled synthetic candidates and local guest signals as compatible inputs.",
@@ -90,33 +93,31 @@ export function buildFeed(
     candidates.filter(({ hasReply }) => hasReply).map(({ id }) => id),
   );
 
-  const trace = combinedScoreAndTruncateWithTrace(
-    {
-      searchResults: candidates,
-      utegResults: realGraphScores,
-      replyTweetIds,
-    },
-    {
+  const ranking = rankPlatformCandidates({
+    candidates,
+    realGraphScores,
+    replyCandidateIds: replyTweetIds,
+    config: {
       maxCount: DEFAULT_FEED_SETTINGS.maxCount,
       earlybirdScoreMultiplier: earlybirdMultiplier,
       numAdditionalReplies: DEFAULT_FEED_SETTINGS.numAdditionalReplies,
     },
-  );
+    surface: "feed",
+  });
 
-  const posts = trace.results.map((post, index) => {
-    const realGraph = realGraphScores.get(post.id) ?? 0;
-    const earlybird = post.earlybirdScore ?? 0;
-    const isExploration = trace.randomResultIds.has(post.id);
-    const isAdditionalReply = trace.additionalReplyIds.has(post.id);
+  const posts = ranking.delivered.map((delivery) => {
+    const post = delivery.candidate;
+    const isExploration = delivery.placement === "exploration";
+    const isAdditionalReply = delivery.placement === "additional_reply";
 
     return {
       ...post,
-      rank: index + 1,
+      rank: delivery.position,
       scores: {
-        realGraph,
-        earlybird,
+        realGraph: delivery.realGraphScore,
+        earlybird: delivery.earlybirdScore,
         earlybirdMultiplier,
-        combined: trace.scores.get(post.id) ?? 0,
+        combined: delivery.combinedScore,
       },
       reason: rankingReason(session, post.topic, isExploration, isAdditionalReply),
       isLiked: session.likedPostIds.has(post.id),
@@ -143,7 +144,9 @@ export function buildFeed(
     algorithm: {
       name: ALGORITHM_INFO.name,
       equation: ALGORITHM_INFO.equation,
-      sourcePath: SOURCE_PATH,
+      adapter: ranking.provenance.adapter,
+      sourcePath: ranking.provenance.sourcePath,
+      sourceSha256: ranking.provenance.sourceSha256,
       sourceUnmodified: true,
     },
   };

@@ -92,7 +92,9 @@ export interface FeedResponse {
   algorithm: {
     name: string;
     equation: string;
+    adapter: string;
     sourcePath: string;
+    sourceSha256: string;
     sourceUnmodified: true;
   };
 }
@@ -115,7 +117,9 @@ export interface AlgorithmInfo {
     emptyScore: number;
     defaultEarlybirdMultiplier: number;
   };
+  adapter: string;
   sourcePath: string;
+  sourceSha256: string;
   sourceUnmodified: true;
   dataNotice: string;
 }
@@ -141,6 +145,13 @@ export interface AssistantResponse {
   followUps: string[];
   mode: AssistantMode;
   generatedAt: string;
+  ranking: {
+    algorithm: string;
+    adapter: string;
+    sourcePath: string;
+    sourceSha256: string;
+    sourceUnmodified: true;
+  };
   pipeline: [
     { stage: "question"; label: string },
     { stage: "delete"; label: string },

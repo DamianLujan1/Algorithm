@@ -1,12 +1,11 @@
 /**
- * Compatibility adapter for:
+ * Dependency-free semantic port of:
  * timelineranker/server/src/main/scala/com/twitter/timelineranker/
  * uteg_liked_by_tweets/CombinedScoreAndTruncateTransform.scala
  *
- * The production source remains untouched. This adapter preserves its score,
- * partition, sort, split, reply-injection, and random-append semantics for the
- * standalone demo, where Twitter's internal Thrift and Finagle types are not
- * available.
+ * The production source remains untouched. This port preserves its score,
+ * partition, sort, split, reply-injection, and random-append semantics. The
+ * platform adapter owns all translation to and from Openfeed objects.
  */
 
 export const DEFAULT_REAL_GRAPH_WEIGHT = 1.0;

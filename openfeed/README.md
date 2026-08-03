@@ -27,6 +27,23 @@ top-level build. Openfeed therefore uses labeled synthetic posts as compatible s
 local guest preferences as compatible UTEG inputs. It does not claim to reproduce X's production
 feed or its unavailable models.
 
+## Algorithm transformation boundary
+
+`OpenfeedCandidateEnvelopeAdapter` is the only bridge between product code and ranking code:
+
+1. Platform posts become Earlybird-compatible `searchResults`.
+2. Local interest and question relevance scores become UTEG-compatible `realGraphScores`.
+3. Reply and exploration flags become the corresponding `CandidateEnvelope` fields.
+4. The unchanged score, partition, sort, split, reply-injection, and exploration-append behavior
+   runs.
+5. Delivered candidates are mapped back to Openfeed posts or AI answer sources with provenance.
+
+Both the feed and assistant retrieval call this adapter; neither calls a separate ranking path. The
+adapter rejects malformed IDs, non-finite scores, and parameters outside the original source bounds.
+An integrity test locks the Scala source to SHA-256
+`59bd8f6cbd22b5de994bbe6b1623997c8ee0994fee00be5a5f3aafdc4cc71269`, so an upstream algorithm
+change cannot silently drift from the platform port.
+
 ## Run locally
 
 Requires Node.js 22 or newer.
@@ -57,10 +74,11 @@ npm test
 npm run build
 ```
 
-The ranking tests cover missing-score defaults, random-candidate reservation, Scala-compatible
-negative `splitAt` behavior, truncation, and additional replies. API tests cover passwordless
-sessions, grounded assistant retrieval, automated topic learning, cookie defaults, interactions,
-hiding/undo, and algorithm provenance.
+The ranking tests cover source integrity, CandidateEnvelope transformation, malformed platform
+inputs, missing-score defaults, random-candidate reservation, Scala-compatible negative `splitAt`
+behavior, truncation, and additional replies. API tests cover passwordless sessions, grounded
+assistant retrieval, automated topic learning, cookie defaults, interactions, hiding/undo, and
+algorithm provenance.
 
 ## Production
 
@@ -89,8 +107,8 @@ React client
           │ same-origin JSON
 Express API
   ├─ in-memory guest sessions
-  ├─ synthetic Earlybird/UTEG input adapter
-  └─ exact TimelineRanker compatibility transform
+  ├─ OpenfeedCandidateEnvelopeAdapter
+  └─ dependency-free TimelineRanker semantic port
           │ provenance
 Original Scala source (unmodified)
 ```

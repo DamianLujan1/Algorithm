@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { CANDIDATES } from "./candidates.js";
 import { personalizedRealGraphScore } from "./feed-service.js";
-import { combinedScoreAndTruncateWithTrace } from "./ranker.js";
+import { rankPlatformCandidates } from "./platform-ranking-adapter.js";
 import { TOPIC_OPTIONS, type AssistantResponse, type CandidatePost, type Topic } from "../shared/types.js";
 import type { SessionRecord } from "./session-store.js";
 
@@ -217,19 +217,17 @@ export async function answerQuestion(
       ),
     ]),
   );
-  const trace = combinedScoreAndTruncateWithTrace(
-    {
-      searchResults: candidates,
-      utegResults: relevanceScores,
-      replyTweetIds: new Set(),
-    },
-    {
+  const ranking = rankPlatformCandidates({
+    candidates,
+    realGraphScores: relevanceScores,
+    config: {
       maxCount: 3,
       earlybirdScoreMultiplier: earlybirdMultiplier,
       numAdditionalReplies: 0,
     },
-  );
-  const rankedSources = trace.results;
+    surface: "assistant",
+  });
+  const rankedSources = ranking.delivered.map(({ candidate }) => candidate);
   const grounded = groundedAnswer(question, rankedSources, inferredTopics);
   const generated = await modelAnswer(question, session, rankedSources);
 
@@ -241,13 +239,13 @@ export async function answerQuestion(
       headline: grounded.headline,
       answer: generated ?? grounded.answer,
       takeaways: grounded.takeaways,
-      sources: rankedSources.map((source) => ({
+      sources: ranking.delivered.map(({ candidate: source, combinedScore }) => ({
         postId: source.id,
         author: source.author.name,
         handle: source.author.handle,
         topic: source.topic,
         excerpt: firstThought(source.text),
-        score: trace.scores.get(source.id) ?? 0,
+        score: combinedScore,
       })),
       followUps: [
         `Give me a 60-second ${topicLabel(inferredTopics[0] ?? "ai").toLowerCase()} brief`,
@@ -256,6 +254,13 @@ export async function answerQuestion(
       ],
       mode: generated ? "model" : "grounded",
       generatedAt: new Date().toISOString(),
+      ranking: {
+        algorithm: ranking.provenance.algorithm,
+        adapter: ranking.provenance.adapter,
+        sourcePath: ranking.provenance.sourcePath,
+        sourceSha256: ranking.provenance.sourceSha256,
+        sourceUnmodified: true,
+      },
       pipeline: [
         { stage: "question", label: "Understand your question" },
         { stage: "delete", label: "Remove irrelevant candidates" },

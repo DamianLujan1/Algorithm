@@ -30,6 +30,8 @@ describe("Openfeed API", () => {
 
     const algorithm = await request(app).get("/api/algorithm").expect(200);
     expect(algorithm.body.sourceUnmodified).toBe(true);
+    expect(algorithm.body.adapter).toBe("OpenfeedCandidateEnvelopeAdapter");
+    expect(algorithm.body.sourceSha256).toMatch(/^[a-f0-9]{64}$/);
     expect(algorithm.body.constants.realGraphWeight).toBe(1);
     expect(algorithm.body.sourcePath).toContain("CombinedScoreAndTruncateTransform.scala");
   });
@@ -73,6 +75,7 @@ describe("Openfeed API", () => {
     expect(feed.body.posts.length).toBeGreaterThan(0);
     expect(feed.body.posts.at(-1).isExploration).toBe(true);
     expect(feed.body.algorithm.sourceUnmodified).toBe(true);
+    expect(feed.body.algorithm.adapter).toBe("OpenfeedCandidateEnvelopeAdapter");
     expect(feed.body.posts[0].scores.combined).toBeTypeOf("number");
   });
 
@@ -110,6 +113,11 @@ describe("Openfeed API", () => {
     expect(answer.body.answer.length).toBeGreaterThan(40);
     expect(answer.body.sources).toHaveLength(3);
     expect(answer.body.sources[0].topic).toBe("ai");
+    expect(answer.body.ranking).toMatchObject({
+      algorithm: "CombinedScoreAndTruncateTransform",
+      adapter: "OpenfeedCandidateEnvelopeAdapter",
+      sourceUnmodified: true,
+    });
     expect(answer.body.pipeline.map((item: { stage: string }) => item.stage)).toEqual([
       "question",
       "delete",

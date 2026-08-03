@@ -1067,6 +1067,8 @@ function AlgorithmModal({
                 <span>
                   <strong>Source file untouched</strong>
                   <code>{info.sourcePath}</code>
+                  <small>Platform bridge · {info.adapter}</small>
+                  <code>SHA-256 · {info.sourceSha256}</code>
                 </span>
               </div>
             </div>

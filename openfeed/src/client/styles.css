@@ -2990,6 +2990,13 @@ input:focus-visible {
   font-size: 9px;
 }
 
+.source-path small {
+  margin-top: 3px;
+  color: #5c786a;
+  font-size: 7px;
+  font-weight: 700;
+}
+
 .source-path code {
   overflow-wrap: anywhere;
   color: #73827b;
