@@ -69,7 +69,7 @@ function rankingReason(
 
 export function buildFeed(
   session: SessionRecord,
-  earlybirdMultiplier = DEFAULT_FEED_SETTINGS.earlybirdMultiplier,
+  earlybirdMultiplier: number = DEFAULT_FEED_SETTINGS.earlybirdMultiplier,
 ): FeedResponse {
   const candidates = CANDIDATES.filter(({ id }) => !session.hiddenPostIds.has(id));
   const realGraphScores = new Map(
