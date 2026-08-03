@@ -225,7 +225,7 @@ export async function answerQuestion(
     },
     {
       maxCount: 3,
-      earlybirdScoreMultiplier,
+      earlybirdScoreMultiplier: earlybirdMultiplier,
       numAdditionalReplies: 0,
     },
   );
