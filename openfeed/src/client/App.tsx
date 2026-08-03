@@ -33,6 +33,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type CSSProperties,
   type FormEvent,
@@ -1031,24 +1032,32 @@ function Dashboard({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [toast, setToast] = useState<ToastState>();
   const [feedError, setFeedError] = useState<string>();
+  const latestFeedRequest = useRef(0);
 
   const loadFeed = useCallback(
     async (nextMultiplier = multiplier) => {
+      const requestId = ++latestFeedRequest.current;
       setRefreshing(true);
       setFeedError(undefined);
       try {
         const nextFeed = await api.getFeed(nextMultiplier);
-        setFeed(nextFeed);
+        if (requestId === latestFeedRequest.current) {
+          setFeed(nextFeed);
+        }
       } catch (requestError) {
         if (requestError instanceof ApiError && requestError.status === 401) {
           onSessionExpired();
           return;
         }
-        setFeedError(
-          requestError instanceof Error ? requestError.message : "Your feed could not be ranked.",
-        );
+        if (requestId === latestFeedRequest.current) {
+          setFeedError(
+            requestError instanceof Error ? requestError.message : "Your feed could not be ranked.",
+          );
+        }
       } finally {
-        setRefreshing(false);
+        if (requestId === latestFeedRequest.current) {
+          setRefreshing(false);
+        }
       }
     },
     [multiplier, onSessionExpired],
@@ -1101,10 +1110,10 @@ function Dashboard({
 
     try {
       await api.interact({ postId: post.id, action, active });
+      await loadFeed(multiplier);
       if (action === "not_interested") {
         setToast({ message: `We’ll show you less ${topicDetails(post.topic).shortLabel}.`, undoPostId: post.id });
       }
-      await loadFeed(multiplier);
     } catch (requestError) {
       setToast({
         message:
