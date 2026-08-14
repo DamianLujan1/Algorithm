@@ -1701,6 +1701,11 @@ input:focus-visible {
   background: linear-gradient(120deg, rgba(252, 248, 239, 0.97), rgba(253, 252, 248, 0.94));
 }
 
+.post-card--restored {
+  border-color: rgba(28, 91, 72, 0.42);
+  box-shadow: 0 0 0 4px rgba(28, 91, 72, 0.14);
+}
+
 .explore-banner {
   display: flex;
   min-height: 31px;

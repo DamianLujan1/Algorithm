@@ -1166,6 +1166,8 @@ function Dashboard({
   const [assistantError, setAssistantError] = useState<string>();
   const [askingAssistant, setAskingAssistant] = useState(false);
   const latestFeedRequest = useRef(0);
+  const restorePostId = useRef<string | undefined>(undefined);
+  const mutationChain = useRef<Promise<void>>(Promise.resolve());
 
   const loadFeed = useCallback(
     async (nextMultiplier = multiplier) => {
@@ -1205,9 +1207,29 @@ function Dashboard({
 
   useEffect(() => {
     if (!toast) return;
-    const timeout = window.setTimeout(() => setToast(undefined), 5_000);
+    const timeout = window.setTimeout(() => setToast(undefined), 8_000);
     return () => window.clearTimeout(timeout);
   }, [toast]);
+
+  useEffect(() => {
+    const postId = restorePostId.current;
+    if (!postId || !feed?.posts.some((post) => post.id === postId)) {
+      return;
+    }
+
+    restorePostId.current = undefined;
+    const card = document.getElementById(`post-${postId}`);
+    card?.scrollIntoView({ behavior: "smooth", block: "center" });
+    card?.classList.add("post-card--restored");
+    const timeout = window.setTimeout(() => card?.classList.remove("post-card--restored"), 1_800);
+    return () => window.clearTimeout(timeout);
+  }, [feed]);
+
+  const runMutation = (work: () => Promise<void>) => {
+    const next = mutationChain.current.then(work, work);
+    mutationChain.current = next.catch(() => undefined);
+    return next;
+  };
 
   const interact = async (
     post: RankedPost,
@@ -1242,8 +1264,10 @@ function Dashboard({
     }
 
     try {
-      await api.interact({ postId: post.id, action, active });
-      await loadFeed(multiplier);
+      await runMutation(async () => {
+        await api.interact({ postId: post.id, action, active });
+        await loadFeed(multiplier);
+      });
       if (action === "not_interested") {
         setToast({ message: `We’ll show you less ${topicDetails(post.topic).shortLabel}.`, undoPostId: post.id });
       }
@@ -1260,10 +1284,15 @@ function Dashboard({
 
   const undoHiddenPost = async (postId: string) => {
     setToast(undefined);
+    restorePostId.current = postId;
     try {
-      await api.interact({ postId, action: "not_interested", active: false });
-      await loadFeed(multiplier);
+      await runMutation(async () => {
+        await api.interact({ postId, action: "not_interested", active: false });
+        await loadFeed(multiplier);
+      });
+      setToast({ message: "Brought back to your feed." });
     } catch (requestError) {
+      restorePostId.current = undefined;
       setToast({
         message: requestError instanceof Error ? requestError.message : "Undo was not available.",
       });
@@ -1394,7 +1423,7 @@ function Dashboard({
         <div className="toast" role="status">
           <span>{toast.message}</span>
           {toast.undoPostId && (
-            <button type="button" onClick={() => void undoHiddenPost(toast.undoPostId!)}>
+            <button className="toast-undo" type="button" onClick={() => void undoHiddenPost(toast.undoPostId!)}>
               Undo
             </button>
           )}
