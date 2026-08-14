@@ -115,6 +115,7 @@ export function createApp(options: AppOptions = {}): express.Express {
               objectSrc: ["'none'"],
               baseUri: ["'self'"],
               frameAncestors: ["'none'"],
+              upgradeInsecureRequests: null,
             },
           }
         : false,
@@ -140,6 +141,14 @@ export function createApp(options: AppOptions = {}): express.Express {
       next();
     });
   }
+
+  const sessionCookie = (request: Request, extra: { maxAge?: number } = {}) => ({
+    httpOnly: true,
+    sameSite: "lax" as const,
+    secure: Boolean(isProduction && request.secure),
+    path: "/",
+    ...extra,
+  });
 
   const getSession = (request: Request): SessionRecord | undefined =>
     store.get(request.cookies?.[COOKIE_NAME] as string | undefined);
@@ -189,24 +198,13 @@ export function createApp(options: AppOptions = {}): express.Express {
     store.delete(previousSessionId);
     const session = store.create(displayName, interests);
 
-    response.cookie(COOKIE_NAME, session.sessionId, {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: isProduction,
-      maxAge: COOKIE_MAX_AGE_MS,
-      path: "/",
-    });
+    response.cookie(COOKIE_NAME, session.sessionId, sessionCookie(request, { maxAge: COOKIE_MAX_AGE_MS }));
     response.status(201).json({ user: session.user });
   });
 
   app.delete("/api/session", (request, response) => {
     store.delete(request.cookies?.[COOKIE_NAME] as string | undefined);
-    response.clearCookie(COOKIE_NAME, {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: isProduction,
-      path: "/",
-    });
+    response.clearCookie(COOKIE_NAME, sessionCookie(request));
     response.status(204).send();
   });
 

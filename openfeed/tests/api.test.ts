@@ -208,4 +208,32 @@ describe("Openfeed API", () => {
     const session = await agent.get("/api/session").expect(200);
     expect(session.body.user).toBeNull();
   });
+
+  it("keeps production guest sessions usable over HTTP and Secure only behind TLS", async () => {
+    const store = new SessionStore();
+    stores.push(store);
+    const app = createApp({ store, isProduction: true, serveClient: false });
+
+    const httpSession = await request(app)
+      .post("/api/session")
+      .send({ displayName: "Maya", interests: ["ai"] })
+      .expect(201);
+    const httpCookie = httpSession.headers["set-cookie"][0] as string;
+    expect(httpCookie).toContain("HttpOnly");
+    expect(httpCookie).toContain("SameSite=Lax");
+    expect(httpCookie.toLowerCase()).not.toContain("secure");
+
+    const httpHealth = await request(app).get("/api/health").expect(200);
+    expect(httpHealth.headers["content-security-policy"]).toContain("default-src 'self'");
+    expect(httpHealth.headers["content-security-policy"]).not.toContain(
+      "upgrade-insecure-requests",
+    );
+
+    const httpsSession = await request(app)
+      .post("/api/session")
+      .set("X-Forwarded-Proto", "https")
+      .send({ displayName: "Ada", interests: ["design"] })
+      .expect(201);
+    expect((httpsSession.headers["set-cookie"][0] as string).toLowerCase()).toContain("secure");
+  });
 });
